@@ -11,6 +11,8 @@
 #include "include/book.h"
 #include "include/booksort.h"
 
+#include "include/persistent.h"
+
 const char *p_name = NULL;
 
 #define MAX_INPUT_SIZE 1024
@@ -52,15 +54,13 @@ int main(int argc, char **argv) {
 
 	case CMD_NEW_BOOK: {
 		if (!(conf.title && conf.author)) {
-			booksorter_destroy(b);
 			ERR("Book title and author must be provided to create a new book.");
-			return EXIT_FAILURE;
+			goto destroy_fail;
 		}
 		book *user_book = add_book(b, conf.title, conf.author, "No genre");
 		if (!user_book) {
-			booksorter_destroy(b);
 			ERR("Book creation failed.");
-			return EXIT_FAILURE;
+			goto destroy_fail;
 		}
 	} break;
 
@@ -71,6 +71,16 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
+	const char *sb = serialize_books(b);
+	if (!sb)
+		goto destroy_fail;
+	printf("%s\n", sb);
+	free(sb);
+
 	booksorter_destroy(b);
 	return EXIT_SUCCESS;
+
+destroy_fail:
+	booksorter_destroy(b);
+	return EXIT_FAILURE;
 }

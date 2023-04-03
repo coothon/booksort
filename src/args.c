@@ -81,6 +81,14 @@ found:
 		++consumed;
 	} break;
 
+	case FLAG_NEW_BOOK:
+		conf->cmd = CMD_NEW_BOOK;
+		break;
+
+	case FLAG_LIST_BOOKS:
+		conf->cmd = CMD_LIST_BOOKS;
+		break;
+
 	default:
 		ERR("Fatal error.");
 		return false;
@@ -141,6 +149,14 @@ found:
 		conf->author = (*argv)[1];
 		++consumed;
 	} break;
+
+	case FLAG_NEW_BOOK:
+		conf->cmd = CMD_NEW_BOOK;
+		break;
+
+	case FLAG_LIST_BOOKS:
+		conf->cmd = CMD_LIST_BOOKS;
+		break;
 
 	default:
 		ERR("Fatal error.");

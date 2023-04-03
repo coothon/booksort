@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#include "include/khash.h"
+#include "include/vec.h"
+
 #include "include/args.h"
 #include "include/book.h"
 #include "include/booksort.h"
@@ -29,6 +32,7 @@ int main(int argc, char **argv) {
 
 	if (argc < 2) {
 		ERR("Expected arguments.");
+		return EXIT_FAILURE;
 	}
 
 	config conf = {0};
@@ -38,6 +42,32 @@ int main(int argc, char **argv) {
 	booksorter *b = booksorter_init();
 	if (!b) {
 		ERR("Insufficient memory.");
+		return EXIT_FAILURE;
+	}
+
+	switch (conf.cmd) {
+	case CMD_NONE:
+	case CMD_LIST_BOOKS:
+		break;
+
+	case CMD_NEW_BOOK: {
+		if (!(conf.title && conf.author)) {
+			booksorter_destroy(b);
+			ERR("Book title and author must be provided to create a new book.");
+			return EXIT_FAILURE;
+		}
+		book *user_book = add_book(b, conf.title, conf.author, "No genre");
+		if (!user_book) {
+			booksorter_destroy(b);
+			ERR("Book creation failed.");
+			return EXIT_FAILURE;
+		}
+	} break;
+
+
+	default:
+		booksorter_destroy(b);
+		ERR("Fatal error.");
 		return EXIT_FAILURE;
 	}
 

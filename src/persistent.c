@@ -37,6 +37,8 @@ const char *serialize_books(const booksorter *bsr) {
 			json_object_object_add(json_obj, "genre",
 			                       json_object_new_string(kh_key(
 									   bsr->known_genres, b_i->genre_iter)));
+			json_object_object_add(json_obj, "copies",
+			                       json_object_new_int64(b_i->copies));
 			json_object_array_add(json_arr, json_obj);
 		}
 	}
@@ -68,4 +70,37 @@ bool serialize_into_file(const char *file_path, const booksorter *bsr) {
 	return true;
 }
 
-// serial_data *deserialize_books(const char *persistent);
+booksorter *deserialize_books(const char *json_data) {
+	if (!json_data)
+		return NULL;
+
+	booksorter *bsr = booksorter_init();
+	if (!bsr)
+		return NULL;
+
+	struct json_object *book_arr = json_tokener_parse(json_data);
+	size_t num_books = json_object_array_length(book_arr);
+
+	for (size_t i = 0; i < num_books; ++i) {
+		struct json_object *book_obj = json_object_array_get_idx(book_arr, i);
+
+		struct json_object *title_obj =
+			json_object_object_get(book_obj, "title");
+		struct json_object *author_obj =
+			json_object_object_get(book_obj, "author");
+		struct json_object *genre_obj =
+			json_object_object_get(book_obj, "genre");
+		struct json_object *copies_obj =
+			json_object_object_get(book_obj, "copies");
+
+		book *b = add_book(bsr, json_object_get_string(title_obj),
+		                   json_object_get_string(author_obj),
+		                   json_object_get_string(genre_obj));
+		if (!b)
+			continue;
+		b->copies = json_object_get_int64(copies_obj);
+	}
+
+	json_object_put(book_arr);
+	return bsr;
+}

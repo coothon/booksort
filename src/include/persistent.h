@@ -12,7 +12,7 @@
 #include "booksort.h"
 #include "file.h"
 
-#define DATABASE_FILE_PATH "./persistent"
+#define DATABASE_FILE_PATH "./persistent.json"
 
 // Serialized representation of `book`.
 typedef struct serial_book {
@@ -26,6 +26,6 @@ typedef vec_t(serial_book *) sbook_vec_t;
 
 const char *serialize_books(const booksorter *bsr);
 bool serialize_into_file(const char *file_path, const booksorter *bsr);
-// serial_data *deserialize_books(const char *persistent);
+booksorter *deserialize_books(const char *json_data);
 
 #endif /* BOOKSORT_PERSISTENT_H_ */

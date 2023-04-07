@@ -173,7 +173,7 @@ book *add_book(booksorter *bsr, const char *restrict title,
 	return new_book;
 }
 
-bool remove_book(booksorter *bsr, book *copy) {
+bool remove_known_book(booksorter *bsr, book *copy) {
 	if (!(bsr && copy))
 		return false;
 
@@ -189,5 +189,45 @@ bool remove_book(booksorter *bsr, book *copy) {
 
 	free(found);
 	vec_remove(&bsr->all_books, found);
+	return true;
+}
+
+bool remove_book(booksorter *bsr, const char *restrict title,
+                 const char *restrict author, const char *restrict genre) {
+	if (!(bsr && title && author && genre))
+		return false;
+
+	khint_t title_i = attr_try_add(bsr->known_titles, title);
+	if (title_i == kh_end(bsr->known_titles))
+		return false;
+
+	khint_t author_i = attr_try_add(bsr->known_authors, author);
+	if (author_i == kh_end(bsr->known_authors))
+		return false;
+
+	khint_t genre_i = attr_try_add(bsr->known_genres, genre);
+	if (genre_i == kh_end(bsr->known_genres))
+		return false;
+
+	// For comparing.
+	book to_remove = {
+		.title_iter = title_i,
+		.author_iter = author_i,
+		.genre_iter = genre_i,
+		1,
+	};
+
+	book *found = find_book(bsr, &to_remove);
+	if (!found)
+		return false;
+
+	// Remove only one.
+	if (found->copies > 1) {
+		--found->copies;
+		return true;
+	}
+
+	vec_remove(&bsr->all_books, found);
+	free(found);
 	return true;
 }

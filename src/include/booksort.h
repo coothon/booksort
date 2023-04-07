@@ -41,6 +41,8 @@ book *add_book(booksorter *bsr, const char *restrict title,
                const char *restrict author, const char *restrict genre);
 
 // Returns false if book could not be removed (e.g., doesn't exist).
-bool remove_book(booksorter *bsr, book *copy);
+bool remove_known_book(booksorter *bsr, book *copy);
+bool remove_book(booksorter *bsr, const char *restrict title,
+                 const char *restrict author, const char *restrict genre);
 
 #endif /* BOOKSORT_H_ */

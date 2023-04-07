@@ -7,6 +7,8 @@
 #include "include/khash.h"
 #include "include/vec.h"
 
+#include "include/console.h"
+
 #include "include/args.h"
 #include "include/book.h"
 #include "include/booksort.h"
@@ -15,25 +17,12 @@
 
 const char *p_name = NULL;
 
-#define MAX_INPUT_SIZE 1024
-static const char *get_input(void) {
-	char input[MAX_INPUT_SIZE];
-
-	// Replace trailing newline with null-byte.
-	fgets(input, MAX_INPUT_SIZE, stdin);
-	size_t end = strcspn(input, "\n");
-	if (end >= MAX_INPUT_SIZE)
-		--end;
-	input[end] = '\0';
-
-	return (const char *)strdup(input);
-}
-
 int main(int argc, char **argv) {
 	p_name = argv[0];
 
 	if (argc < 2) {
-		ERR("Expected arguments.");
+		error_put("Expected arguments.");
+		put_usage();
 		return EXIT_FAILURE;
 	}
 
@@ -41,42 +30,76 @@ int main(int argc, char **argv) {
 	if (!process_args(&conf, argc, argv))
 		return EXIT_FAILURE;
 
-	booksorter *b = booksorter_init();
-	if (!b) {
-		ERR("Insufficient memory.");
-		return EXIT_FAILURE;
+	booksorter *b = NULL;
+	if (is_file(DATABASE_FILE_PATH)) {
+		const char *database = read_entire_file(DATABASE_FILE_PATH);
+		if (!database) {
+			warn_put(
+				"JSON database corrupted. Proceeding with empty database.");
+			goto skip_db;
+		}
+
+		// JSON requires at least the enclosing square brackets.
+		if (strlen(database) < 2) {
+			warn_put(
+				"JSON database corrupted. Proceeding with empty database.");
+			goto skip_db;
+		}
+
+		b = deserialize_books(database);
+		free(database);
+
+		if (!b) {
+			warn_put(
+				"JSON database corrupted. Proceeding with empty database.");
+			goto skip_db;
+		}
+	} else {
+	skip_db:
+		if (!(b = booksorter_init())) {
+			error_put("Insufficient memory.");
+			return EXIT_FAILURE;
+		}
 	}
 
 	switch (conf.cmd) {
-	case CMD_NONE:
 	case CMD_LIST_BOOKS:
 		break;
 
 	case CMD_NEW_BOOK: {
-		if (!(conf.title && conf.author)) {
-			ERR("Book title and author must be provided to create a new book.");
+		if (!(conf.title && conf.author && conf.genre)) {
+			error_put("Book title, author, and genre must be provided to "
+			          "create a new book.");
+			put_usage();
 			goto destroy_fail;
 		}
-		book *user_book = add_book(b, conf.title, conf.author, "No genre");
+		book *user_book = add_book(b, conf.title, conf.author, conf.genre);
 		if (!user_book) {
-			ERR("Book creation failed.");
+			error_put("Book creation failed.");
 			goto destroy_fail;
 		}
 	} break;
 
+	case CMD_REMOVE_BOOK: {
+		if (!(conf.title && conf.author && conf.genre)) {
+			error_put("Book title, author, and genre must be provided to "
+			          "remove a book.");
+			put_usage();
+			goto destroy_fail;
+		}
+		if (!remove_book(b, conf.title, conf.author, conf.genre)) {
+			error_put("Book does not exist in database.");
+			goto destroy_fail;
+		}
+	} break;
 
+	case CMD_NONE:
 	default:
-		booksorter_destroy(b);
-		ERR("Fatal error.");
-		return EXIT_FAILURE;
+		error_put("Fatal error.");
+		goto destroy_fail;
 	}
 
-	const char *sb = serialize_books(b);
-	if (!sb)
-		goto destroy_fail;
-	printf("%s\n", sb);
-	free(sb);
-
+	serialize_into_file(DATABASE_FILE_PATH, b);
 	booksorter_destroy(b);
 	return EXIT_SUCCESS;
 
